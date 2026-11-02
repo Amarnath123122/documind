@@ -55,3 +55,5 @@ th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line);
 .badge.pending_approval { border-color: var(--accent); }
 .badge.approved { border-color: #2e7d32; }
 .badge.rejected { border-color: var(--err); }
+.warn { color: #b26a00; }
+@media (prefers-color-scheme: dark) { .warn { color: #f0b45a; } }

@@ -95,6 +95,7 @@ question → retrieve only READY chunks I may see (FTS + vector, filtered BEFORE
 | The prompt never contains another tenant's text or raw PII | `tests/integration/test_rag.py::test_model_context_never_contains_other_tenant_or_raw_pii` |
 | Invented citations (`[E99]`) never reach the user | `test_hallucinated_citation_never_reaches_client` |
 | A refusal is never shown as "supported" | `test_model_refusal_is_never_reported_as_supported` |
+| An answer without a valid citation is labelled "unverified" | `test_uncited_answer_is_marked_unverified` |
 | No evidence means the model isn't called | `test_no_evidence_means_no_model_call` |
 | Only redacted text is indexed; raw pages are worker-only | `test_document_indexed_with_redacted_chunks_only`, `test_app_role_cannot_read_raw_pages` |
 | Design rationale | [ADR-0006](../adr/0006-secure-rag.md), [ADR-0011](../adr/0011-local-real-models.md) |
@@ -119,7 +120,9 @@ question → retrieve only READY chunks I may see (FTS + vector, filtered BEFORE
 
 ## 7. Measured results
 
-**Tests:** 164 passing (`.\scripts\dev.ps1 test`): unit, integration, security, OIDC flow and the golden-set gate.
+**Tests:** 165 passing (`.\scripts\dev.ps1 test`): unit, integration, security, OIDC flow and the golden-set gate. They run against their own database (`documind_test`), so the running app is never touched.
+
+**End-to-end:** `.\scripts\dev.ps1 smoke` runs 19 checks against the running app through the browser path: upload, search, cited chat, refusal, cross-tenant denial, sharing, four-eyes workflow, usage, and deletion. All 19 pass on real models.
 
 **Latency** (local laptop, mock model): [2026-11-02-local-latency.md](../benchmarks/2026-11-02-local-latency.md)
 
@@ -144,13 +147,14 @@ question → retrieve only READY chunks I may see (FTS + vector, filtered BEFORE
 - Not deployed: the Azure subscription is inactive. User-delegation SAS and Entra ID are untested against real Azure.
 - Real-model answer quality is moderate with a 1.5B model. Next step: a 7–8B model, or Azure OpenAI, compared on the same golden set.
 - Regex-based PII detection; soft quotas (about one request of overshoot); Postgres and storage are not yet on private networking.
-- The automated tests share the local dev database, so test data appears in the UI. Next step: a separate test database.
+- CPU-only local answers take about 15–40 s each. Production needs a GPU or a hosted model.
 
 ## 9. How to run
 
 ```powershell
 .\scripts\dev.ps1 up      # app at http://localhost:5173 (deterministic mock model)
 .\scripts\dev.ps1 up-ai   # same app on real local models (Ollama), re-embeds existing docs
-.\scripts\dev.ps1 test    # 164 tests
+.\scripts\dev.ps1 test    # 165 tests (separate test database)
+.\scripts\dev.ps1 smoke   # 19 end-to-end checks against the running app
 .\scripts\dev.ps1 eval    # golden-set quality report
 ```

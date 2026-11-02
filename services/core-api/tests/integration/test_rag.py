@@ -247,3 +247,16 @@ async def test_model_refusal_is_never_reported_as_supported(alice, corpus, monke
     assert done["grounding"] == "insufficient_evidence"
     assert not [e for e, _ in events if e == "citation"]
     assert "NOT_FOUND" not in done["answer"]
+
+
+async def test_uncited_answer_is_marked_unverified(alice, corpus, monkeypatch):
+    class NoCites:
+        name = "nocites"
+
+        async def stream_answer(self, **kw):
+            yield "Casual leave is twelve days."
+
+    monkeypatch.setattr(providers, "get_chat_provider", lambda: NoCites())
+    _, events = await ask(alice, WS_ALPHA_HR, "casual leave days")
+    assert final(events)["grounding"] == "unverified"
+    assert not [e for e, _ in events if e == "citation"]

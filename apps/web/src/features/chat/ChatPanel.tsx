@@ -74,6 +74,9 @@ export function ChatPanel({ workspace }: { workspace: Workspace }) {
             {t.grounding === "insufficient_evidence" && (
               <p className="muted">No supporting evidence in documents you can access.</p>
             )}
+            {t.grounding === "unverified" && (
+              <p className="warn">⚠ This answer isn't linked to a source. Check the document before relying on it.</p>
+            )}
             {t.citations.length > 0 && (
               <ul className="cites">
                 {t.citations.map((c) => (

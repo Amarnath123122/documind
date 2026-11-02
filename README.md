@@ -33,7 +33,7 @@ Requirements: Docker Desktop, Python 3.12+. The web app runs on Node 22 inside D
 
 ```powershell
 .\scripts\dev.ps1 up      # db, azurite → migrate + seed → api, worker, web
-.\scripts\dev.ps1 test    # 164 tests (pauses the worker container while running)
+.\scripts\dev.ps1 test    # 165 tests (pauses the worker container while running)
 .\scripts\dev.ps1 observe # same as up + Jaeger traces at http://localhost:16686
 .\scripts\dev.ps1 eval    # golden-set quality report -> docs/benchmarks/golden-eval-latest.md
 .\scripts\dev.ps1 down    # stop (keep data)   |  reset = delete db + blob volumes

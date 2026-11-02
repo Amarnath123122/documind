@@ -215,7 +215,7 @@ async def _generate(p: Principal, turn_id: UUID) -> AsyncIterator[str]:
 
         provider = providers.get_chat_provider()
         parts: list[str] = []
-        async with asyncio.timeout(90):
+        async with asyncio.timeout(cfg.llm_timeout_s):
             stream = provider.stream_answer(system=SYSTEM_PROMPT, question=q.question,
                                             context=context,
                                             max_output_tokens=cfg.max_output_tokens)
@@ -235,7 +235,12 @@ async def _generate(p: Principal, turn_id: UUID) -> AsyncIterator[str]:
         else:
             answer = strip_invalid_markers(normalize_citations(raw), evidence).strip()
             cited = valid_citations(answer, evidence)
-        grounding = Grounding.SUPPORTED if cited else Grounding.INSUFFICIENT
+        if cited:
+            grounding = Grounding.SUPPORTED
+        elif is_refusal(raw):
+            grounding = Grounding.INSUFFICIENT
+        else:
+            grounding = Grounding.UNVERIFIED
         usage = {"prompt_tokens": approx_tokens(SYSTEM_PROMPT + context + q.question),
                  "completion_tokens": approx_tokens(raw)}
         await _finish(p, turn_id, "completed", answer=answer, grounding=grounding,

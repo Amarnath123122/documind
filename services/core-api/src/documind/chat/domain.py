@@ -41,6 +41,7 @@ NO_EVIDENCE_ANSWER = "I couldn't find this in the documents you can access."
 class Grounding(StrEnum):
     SUPPORTED = "supported"
     INSUFFICIENT = "insufficient_evidence"
+    UNVERIFIED = "unverified"  # model answered but cited no valid source: user must verify
 
 
 @dataclass(frozen=True)

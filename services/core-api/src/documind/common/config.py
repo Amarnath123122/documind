@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 6
     max_context_chars: int = 6000
     max_output_tokens: int = 512
+    llm_timeout_s: int = 90  # whole generation; raise for CPU-only local models
+    ollama_num_ctx: int = 4096
     max_question_chars: int = 2000
 
     otel_endpoint: str = ""  # e.g. http://jaeger:4318; empty disables export

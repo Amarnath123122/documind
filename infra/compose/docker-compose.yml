@@ -19,6 +19,8 @@ x-core-env: &core-env
   EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-hash}
   OLLAMA_URL: http://ollama:11434
   OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+  LLM_TIMEOUT_S: ${LLM_TIMEOUT_S:-90}
+  RETRIEVAL_TOP_K: ${RETRIEVAL_TOP_K:-6}
 
 services:
   db:
@@ -104,6 +106,9 @@ services:
     profiles: [ai]
     ports: ["11434:11434"]
     volumes: ["ollama-models:/root/.ollama"]
+    environment:
+      OLLAMA_NUM_PARALLEL: "1"     # full context window per request, faster on CPU
+      OLLAMA_KEEP_ALIVE: "30m"
 
   # Optional: traces UI at http://localhost:16686 (profile "observability").
   jaeger:
