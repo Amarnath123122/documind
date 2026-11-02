@@ -1,6 +1,6 @@
 # Golden eval: 2026-11-02
 
-Hash embedder (`hash-v1-256`) + mock extractive LLM. 16 positive, 4 negative questions.
+Setup: `embeddings=hash-v1-256 llm=mock`. 16 positive, 4 negative questions.
 
 | Metric | Value | Gate |
 |---|---|---|

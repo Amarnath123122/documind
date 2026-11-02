@@ -10,6 +10,22 @@ from enum import StrEnum
 from uuid import UUID
 
 _CITE = re.compile(r"\[E(\d{1,3})\]")
+# Small models often write "Evidence E1", "(E1)" or a bare "E1". Normalise those to "[E1]";
+# validation against server-issued labels still decides what survives.
+_LOOSE_CITE = re.compile(r"[\[(]?\b(?:evidence\s+)?E(\d{1,3})\b[\])]?", re.IGNORECASE)
+NOT_FOUND = "NOT_FOUND"
+ANSWER_FORMAT = ("Answer in one or two sentences using only the evidence above, ending each "
+                 "sentence with its evidence label in square brackets, e.g. [E1]. "
+                 f"Only if no evidence block is relevant to the question, reply {NOT_FOUND}.")
+
+
+def is_refusal(answer: str) -> bool:
+    """Deterministic abstain signal: never infer 'supported' from a cited refusal."""
+    return answer.strip().strip(".").upper().startswith(NOT_FOUND)
+
+
+def normalize_citations(answer: str) -> str:
+    return _LOOSE_CITE.sub(lambda m: f"[E{m.group(1)}]", answer)
 
 SYSTEM_PROMPT = (
     "You answer questions using ONLY the evidence blocks provided.\n"

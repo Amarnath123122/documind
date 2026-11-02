@@ -93,6 +93,13 @@ services:
               "sub": "ghost-subject", "email": "ghost@nowhere.test",
               "email_verified": true, "aud": ["documind-web"]}}]}]}
 
+  # Optional local models (profile "ai"): `dev.ps1 ai` pulls them. CPU is fine for small models.
+  ollama:
+    image: ollama/ollama:0.4.7
+    profiles: [ai]
+    ports: ["11434:11434"]
+    volumes: ["ollama-models:/root/.ollama"]
+
   # Optional: traces UI at http://localhost:16686 (profile "observability").
   jaeger:
     image: jaegertracing/all-in-one:1.62.0
@@ -102,6 +109,7 @@ services:
     ports: ["16686:16686"]
 
 volumes:
+  ollama-models:
   db-data:
   blob-data:
   web-node-modules:

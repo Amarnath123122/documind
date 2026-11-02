@@ -12,6 +12,7 @@ from typing import Protocol
 
 import httpx
 
+from documind.chat.domain import ANSWER_FORMAT
 from documind.common.config import get_settings
 from documind.retrieval.domain import tokens
 
@@ -60,7 +61,8 @@ class OllamaChatProvider:
         body = {"model": self.model, "stream": True,
                 "options": {"num_predict": max_output_tokens, "temperature": 0},
                 "messages": [{"role": "system", "content": system},
-                             {"role": "user", "content": f"{context}\n\nQuestion: {question}"}]}
+                             {"role": "user", "content": (f"{context}\n\nQuestion: {question}\n\n"
+                                                          f"{ANSWER_FORMAT}")}]}
         timeout = httpx.Timeout(connect=5, read=60, write=10, pool=5)
         async with httpx.AsyncClient(timeout=timeout) as c, \
                 c.stream("POST", f"{self.base_url}/api/chat", json=body) as r:

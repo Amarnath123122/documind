@@ -122,3 +122,18 @@ async def test_mock_provider_cites_best_evidence():
 def test_rrf_ties_prefer_first_ranking_not_ids():
     # "zzz" is #1 by keyword, "aaa" #1 by vector: equal RRF scores, keyword wins.
     assert rrf(["zzz", "m"], ["aaa", "n"])[0] == "zzz"
+
+
+def test_loose_citations_normalised_but_still_validated():
+    from documind.chat.domain import normalize_citations
+    ev = [_ev("E1"), _ev("E2")]
+    raw = "Per Evidence E1 it is 12 days (E2), not E7."
+    norm = normalize_citations(raw)
+    assert norm == "Per [E1] it is 12 days [E2], not [E7]."
+    assert [e.label for e in valid_citations(norm, ev)] == ["E1", "E2"]
+    assert "[E7]" not in strip_invalid_markers(norm, ev)
+
+
+def test_normalisation_ignores_words_containing_e_digits():
+    from documind.chat.domain import normalize_citations
+    assert normalize_citations("Model AE12 and E12x stay") == "Model AE12 and E12x stay"

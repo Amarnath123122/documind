@@ -21,6 +21,8 @@ from documind.chat.domain import (
     Grounding,
     approx_tokens,
     build_context,
+    is_refusal,
+    normalize_citations,
     strip_invalid_markers,
     valid_citations,
 )
@@ -228,8 +230,11 @@ async def _generate(p: Principal, turn_id: UUID) -> AsyncIterator[str]:
                     return
 
         raw = "".join(parts).strip()
-        answer = strip_invalid_markers(raw, evidence).strip()
-        cited = valid_citations(answer, evidence)
+        if is_refusal(raw):
+            answer, cited = NO_EVIDENCE_ANSWER, []
+        else:
+            answer = strip_invalid_markers(normalize_citations(raw), evidence).strip()
+            cited = valid_citations(answer, evidence)
         grounding = Grounding.SUPPORTED if cited else Grounding.INSUFFICIENT
         usage = {"prompt_tokens": approx_tokens(SYSTEM_PROMPT + context + q.question),
                  "completion_tokens": approx_tokens(raw)}

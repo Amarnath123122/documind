@@ -1,5 +1,16 @@
 locals {
-  tags = { app = "documind", env = var.name, managed_by = "terraform" }
+  prod = var.tier == "prod"
+  size = {
+    pg_sku      = local.prod ? "GP_Standard_D2ds_v5" : "B_Standard_B1ms"
+    replication = local.prod ? "ZRS" : "LRS"
+    worker_mem  = local.prod ? "2Gi" : "0.5Gi"
+    api_min     = local.prod ? 2 : 0
+    web_min     = local.prod ? 2 : 0
+    worker_cpu  = local.prod ? 1 : 0.25
+    geo_backup  = local.prod
+    log_days    = local.prod ? 90 : 30
+  }
+  tags = { app = "documind", env = var.name, tier = var.tier, managed_by = "terraform" }
   img  = { for k in ["core-api", "web"] : k => "${var.registry}/documind-${k}:${var.image_tag}" }
 }
 
@@ -15,7 +26,7 @@ resource "azurerm_log_analytics_workspace" "logs" {
   name                = "log-${var.name}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = var.location
-  retention_in_days   = 30
+  retention_in_days   = local.size.log_days
   tags                = local.tags
 }
 
@@ -101,22 +112,25 @@ resource "azurerm_postgresql_flexible_server" "pg" {
   resource_group_name           = azurerm_resource_group.rg.name
   location                      = var.location
   version                       = "16"
-  sku_name                      = var.postgres_sku
+  sku_name                      = local.size.pg_sku
   storage_mb                    = 65536
   backup_retention_days         = 14
-  geo_redundant_backup_enabled  = true
+  geo_redundant_backup_enabled  = local.size.geo_backup
   public_network_access_enabled = true # ADR-0009: move to VNet + private endpoint before GA
   administrator_login           = "dmadmin"
   administrator_password        = random_password.db["admin"].result
   zone                          = "1"
   tags                          = local.tags
 
-  high_availability {
-    mode = "ZoneRedundant"
+  dynamic "high_availability" {
+    for_each = local.prod ? [1] : []
+    content {
+      mode = "ZoneRedundant"
+    }
   }
 
   lifecycle {
-    ignore_changes = [zone, high_availability[0].standby_availability_zone]
+    ignore_changes = [zone]
   }
 }
 
@@ -143,7 +157,7 @@ resource "azurerm_storage_account" "blob" {
   resource_group_name             = azurerm_resource_group.rg.name
   location                        = var.location
   account_tier                    = "Standard"
-  account_replication_type        = "ZRS"
+  account_replication_type        = local.size.replication
   min_tls_version                 = "TLS1_2"
   https_traffic_only_enabled      = true
   shared_access_key_enabled       = false # only Entra ID + user-delegation SAS

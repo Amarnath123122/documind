@@ -36,7 +36,12 @@ variable "public_hostname" {
   type        = string
 }
 
-variable "postgres_sku" {
-  type    = string
-  default = "GP_Standard_D2ds_v5"
+variable "tier" {
+  description = "demo: smallest/cheapest, no HA, scale to zero. prod: zone-redundant HA."
+  type        = string
+  default     = "demo"
+  validation {
+    condition     = contains(["demo", "prod"], var.tier)
+    error_message = "The tier must be demo or prod."
+  }
 }

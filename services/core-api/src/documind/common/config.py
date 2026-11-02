@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     max_pages: int = 500
 
     llm_provider: Literal["mock", "ollama"] = "mock"
+    embedding_provider: Literal["hash", "ollama"] = "hash"
+    ollama_embed_model: str = "nomic-embed-text"
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     retrieval_candidates: int = 20

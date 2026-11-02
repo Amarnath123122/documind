@@ -1,7 +1,7 @@
 # DocuMind
 
 Secure, multi-tenant AI knowledge platform, built as a modular monolith.
-Status: **Phase 6 (quality evals + approval workflows) complete locally.** Not yet deployed: see `docs/runbooks/deploy.md`.
+Status: **Phase 7 (real local models, measured) complete locally.** Not yet deployed: see `docs/runbooks/deploy.md`.
 
 ## What exists
 
@@ -21,10 +21,11 @@ Status: **Phase 6 (quality evals + approval workflows) complete locally.** Not y
 | Auth | `identity/session.py`, `identity/oidc.py` | OIDC code + PKCE (tested with a mock IdP), signed session, CSRF; dev login blocked in prod |
 | Evals | `tools/evals/golden.json`, `tests/integration/test_eval_golden.py` | Golden-set quality gate (hit@1, MRR, citations, abstain) in CI |
 | Workflows | `services/core-api/src/documind/workflows` | Cited report drafts, four-eyes approval (code + DB constraint), live source checks |
+| Real models | `retrieval/embeddings.py`, `chat/providers.py` | Ollama nomic-embed-text + qwen2.5, compared on the golden set (ADR-0011) |
 | Production web | `apps/web/Dockerfile`, `apps/web/deploy` | nginx, same-origin proxy, SSE, strict CSP/HSTS on every response |
 | Azure IaC | `infra/terraform` | Container Apps, Postgres HA, keyless storage, Key Vault, managed identities (validated, not applied) |
 | React app | `apps/web` | Sign in, upload, watch processing, chat with cited answers |
-| Decisions | `docs/adr` | 0001 monolith · 0002 no Kafka · 0003 RLS · 0004 session · 0005 uploads/worker · 0006 secure RAG · 0007 sharing/deletion/quotas · 0008 observability · 0009 OIDC + Azure · 0010 evals + workflows |
+| Decisions | `docs/adr` | 0001 monolith · 0002 no Kafka · 0003 RLS · 0004 session · 0005 uploads/worker · 0006 secure RAG · 0007 sharing/deletion/quotas · 0008 observability · 0009 OIDC + Azure · 0010 evals + workflows · 0011 real models |
 
 ## Run (Windows PowerShell)
 
@@ -32,7 +33,7 @@ Requirements: Docker Desktop, Python 3.12+. The web app runs on Node 22 inside D
 
 ```powershell
 .\scripts\dev.ps1 up      # db, azurite → migrate + seed → api, worker, web
-.\scripts\dev.ps1 test    # 161 tests (pauses the worker container while running)
+.\scripts\dev.ps1 test    # 164 tests (pauses the worker container while running)
 .\scripts\dev.ps1 observe # same as up + Jaeger traces at http://localhost:16686
 .\scripts\dev.ps1 eval    # golden-set quality report -> docs/benchmarks/golden-eval-latest.md
 .\scripts\dev.ps1 down    # stop (keep data)   |  reset = delete db + blob volumes

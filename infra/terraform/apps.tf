@@ -64,7 +64,7 @@ resource "azurerm_container_app" "api" {
   }
 
   template {
-    min_replicas = 2
+    min_replicas = local.size.api_min
     max_replicas = 10
 
     container {
@@ -142,6 +142,7 @@ resource "azurerm_container_app" "worker" {
   }
 
   template {
+    # Always 1: the worker polls Postgres, so no HTTP traffic would ever wake it from zero.
     min_replicas = 1
     max_replicas = 5
 
@@ -149,8 +150,8 @@ resource "azurerm_container_app" "worker" {
       name    = "worker"
       image   = local.img["core-api"]
       command = ["python", "-m", "documind.ingestion.worker"]
-      cpu     = 1
-      memory  = "2Gi"
+      cpu     = local.size.worker_cpu
+      memory  = local.size.worker_mem
 
       dynamic "env" {
         for_each = merge(local.common_env, { AZURE_CLIENT_ID = azurerm_user_assigned_identity.worker.client_id })
@@ -198,7 +199,7 @@ resource "azurerm_container_app" "web" {
   }
 
   template {
-    min_replicas = 2
+    min_replicas = local.size.web_min
     max_replicas = 6
 
     container {

@@ -5,6 +5,7 @@
 #   reset    stop and DELETE local db volume
 #   observe  like `up`, plus Jaeger tracing UI at http://localhost:16686
 #   eval     golden-set quality run; writes docs/benchmarks/golden-eval-latest.md
+#   ai       real local models (Ollama): nomic-embed-text + qwen2.5:1.5b golden-set report
 #   logs     follow api logs
 param([Parameter(Position = 0)][string]$Cmd = "help")
 # Not "Stop": PowerShell 5.1 treats native stderr progress output (docker) as errors.
@@ -35,8 +36,20 @@ switch ($Cmd) {
               $env:EVAL_REPORT = "$Root\docs\benchmarks\golden-eval-latest.md"
               try { & $py -m pytest tests/integration/test_eval_golden.py -q -s }
               finally { Remove-Item Env:EVAL_REPORT; Pop-Location; docker @Compose start worker } }
+    # Real local models: starts Ollama, pulls models, runs the golden set (report-only).
+    "ai"    { docker @Compose --profile ai up -d ollama
+              docker @Compose exec -T ollama ollama pull nomic-embed-text
+              docker @Compose exec -T ollama ollama pull qwen2.5:1.5b
+              $py = Venv; docker @Compose stop worker; Push-Location "$Root\services\core-api"
+              $env:OLLAMA_URL = "http://localhost:11434"; $env:EMBEDDING_PROVIDER = "ollama"
+              $env:LLM_PROVIDER = "ollama"; $env:OLLAMA_MODEL = "qwen2.5:1.5b"
+              $env:EVAL_REPORT = "$Root\docs\benchmarks\golden-eval-nomic-qwen.md"
+              try { & $py -m pytest tests/integration/test_eval_golden.py -q -s }
+              finally { Remove-Item Env:OLLAMA_URL, Env:EMBEDDING_PROVIDER, Env:LLM_PROVIDER,
+                                    Env:OLLAMA_MODEL, Env:EVAL_REPORT
+                        Pop-Location; docker @Compose start worker } }
     "down"  { docker @Compose down }
     "reset" { docker @Compose --profile observability down -v }
     "logs"  { docker @Compose logs -f api }
-    default { Get-Content $PSCommandPath -TotalCount 9 }
+    default { Get-Content $PSCommandPath -TotalCount 10 }
 }

@@ -12,7 +12,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from documind.common.config import get_settings
-from documind.retrieval.domain import hash_embed, rrf, to_pgvector
+from documind.retrieval.domain import rrf, to_pgvector
+from documind.retrieval.embeddings import COLUMN_BY_DIM, get_embedder
 
 _SCOPE = (
     "FROM document_chunks c JOIN documents d "
@@ -49,10 +50,13 @@ async def hybrid_search(s: AsyncSession, *, tenant_ids: list[UUID], workspace_id
         f"SELECT c.id {_SCOPE} AND {_TSQ}::text <> '' AND c.tsv @@ {_TSQ} "
         f"ORDER BY ts_rank_cd(c.tsv, {_TSQ}) DESC, {_STABLE} LIMIT :n"),
         {**scope, "q": query})]
+    embedder = get_embedder()
+    col = COLUMN_BY_DIM[embedder.dim]
     vector = [r[0] for r in await s.execute(text(
-        f"SELECT c.id {_SCOPE} AND c.embedding IS NOT NULL "
-        f"ORDER BY c.embedding <=> CAST(:e AS vector), {_STABLE} LIMIT :n"),
-        {**scope, "e": to_pgvector(hash_embed(query))})]
+        f"SELECT c.id {_SCOPE} AND c.{col} IS NOT NULL AND c.embedding_model = :model "
+        f"ORDER BY c.{col} <=> CAST(:e AS vector), {_STABLE} LIMIT :n"),
+        {**scope, "model": embedder.name,
+         "e": to_pgvector(await embedder.embed_query(query))})]
 
     ranked = rrf([str(i) for i in keyword], [str(i) for i in vector])[: top_k or cfg.retrieval_top_k]
     if not ranked:

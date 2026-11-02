@@ -232,3 +232,18 @@ async def test_follow_up_turn_in_same_conversation(alice, corpus):
     assert t2["conversation_id"] == t1["conversation_id"]
     conv = (await alice.get(f"/v1/chat/conversations/{t1['conversation_id']}")).json()
     assert [t["question"] for t in conv["turns"]] == ["casual leave", "sick leave"]
+
+
+async def test_model_refusal_is_never_reported_as_supported(alice, corpus, monkeypatch):
+    class Refuses:
+        name = "refuses"
+
+        async def stream_answer(self, **kw):
+            yield "NOT_FOUND [E1]"  # a refusal that still "cites" must not look grounded
+
+    monkeypatch.setattr(providers, "get_chat_provider", lambda: Refuses())
+    _, events = await ask(alice, WS_ALPHA_HR, "casual leave days")
+    done = final(events)
+    assert done["grounding"] == "insufficient_evidence"
+    assert not [e for e, _ in events if e == "citation"]
+    assert "NOT_FOUND" not in done["answer"]

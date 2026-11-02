@@ -5,7 +5,6 @@ document that left the expected state (e.g. deleting) rolls the stage's writes b
 Only redacted text ever reaches chunks, the search index, or a model.
 """
 
-import asyncio
 import json
 import uuid
 
@@ -16,7 +15,8 @@ from documind.common.db import worker_unit_of_work
 from documind.documents.domain import DocumentStatus as S
 from documind.ingestion.domain import Abandoned
 from documind.privacy.domain import redact
-from documind.retrieval.domain import HASH_MODEL, chunk_pages, hash_embed, to_pgvector
+from documind.retrieval.domain import chunk_pages, to_pgvector
+from documind.retrieval.embeddings import COLUMN_BY_DIM, get_embedder
 
 
 async def _cas(s: AsyncSession, job, frm: S, to: S, extra_sql: str = "", **params) -> None:
@@ -71,26 +71,31 @@ async def chunk_stage(job) -> None:
 
 
 async def embed_stage(job) -> None:
+    embedder = get_embedder()
+    col = COLUMN_BY_DIM[embedder.dim]
     async with worker_unit_of_work(job.tenant_id) as s:
         rows = (await s.execute(text(
-            "SELECT id, text FROM document_chunks WHERE document_id = :d "
-            "AND document_version = :v AND embedding IS NULL"),
+            f"SELECT id, text FROM document_chunks WHERE document_id = :d "
+            f"AND document_version = :v AND {col} IS NULL"),
             {"d": job.document_id, "v": job.document_version})).all()
-        vectors = await asyncio.to_thread(lambda: [hash_embed(r.text) for r in rows])
+    # Model calls happen outside the transaction: no DB connection held during inference.
+    vectors = await embedder.embed_documents([r.text for r in rows]) if rows else []
+    async with worker_unit_of_work(job.tenant_id) as s:
         if rows:
             await s.execute(text(
-                "UPDATE document_chunks SET embedding = CAST(:e AS vector), embedding_model = :m "
+                f"UPDATE document_chunks SET {col} = CAST(:e AS vector), embedding_model = :m "
                 "WHERE id = :id"),
-                [{"e": to_pgvector(v), "m": HASH_MODEL, "id": r.id}
+                [{"e": to_pgvector(v), "m": embedder.name, "id": r.id}
                  for r, v in zip(rows, vectors, strict=True)])
         await _cas(s, job, S.EMBEDDING, S.INDEXING)
 
 
 async def index_stage(job) -> None:
+    col = COLUMN_BY_DIM[get_embedder().dim]
     async with worker_unit_of_work(job.tenant_id) as s:
         missing = (await s.execute(text(
             "SELECT count(*) FROM document_chunks WHERE document_id = :d "
-            "AND document_version = :v AND embedding IS NULL"),
+            f"AND document_version = :v AND {col} IS NULL"),
             {"d": job.document_id, "v": job.document_version})).scalar_one()
         if missing:
             raise RuntimeError("chunks without embeddings at indexing")
