@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "note": "Synthetic, hand-written corpus. Each positive question has exactly one correct document/page. Negatives are not answered anywhere in the corpus.",
+  "documents": {
+    "leave": {
+      "filename": "leave-policy.txt",
+      "pages": [
+        "Leave Policy. Casual leave: employees receive 12 days of casual leave per calendar year. Unused casual leave does not carry forward.",
+        "Sick leave: employees receive 10 days of paid sick leave per year. A medical certificate is required for absences longer than 3 consecutive days.",
+        "Maternity leave is 26 weeks of paid leave. Paternity leave is 15 working days, to be taken within 6 months of the birth."
+      ]
+    },
+    "security": {
+      "filename": "it-security-standard.txt",
+      "pages": [
+        "IT Security Standard. Passwords must be at least 14 characters long and must be rotated every 180 days. Password reuse of the last 10 passwords is not allowed.",
+        "Laptops must use full-disk encryption. Lost or stolen devices must be reported to the security desk within 24 hours.",
+        "Multi-factor authentication is mandatory for email, VPN and all production systems."
+      ]
+    },
+    "travel": {
+      "filename": "travel-expenses.txt",
+      "pages": [
+        "Travel and Expenses. Economy class is required for flights shorter than 6 hours. Business class may be approved for flights longer than 6 hours.",
+        "The daily meal allowance for domestic travel is 1500 rupees. Hotel bookings must be made through the corporate travel portal.",
+        "Expense claims must be submitted within 30 days of the trip with itemised receipts."
+      ]
+    },
+    "benefits": {
+      "filename": "benefits-guide.txt",
+      "pages": [
+        "Benefits Guide. Group health insurance covers the employee, spouse and up to two children, with a sum insured of 5 lakh rupees.",
+        "The company matches provident fund contributions at 12 percent of basic salary.",
+        "Employees may claim a learning budget of 40000 rupees per year for approved courses and certifications."
+      ]
+    }
+  },
+  "questions": [
+    {"q": "How many casual leave days do employees get per year?", "doc": "leave", "page": 1, "answer": "12 days"},
+    {"q": "Does unused casual leave carry forward?", "doc": "leave", "page": 1, "answer": "does not carry forward"},
+    {"q": "How many days of paid sick leave are there?", "doc": "leave", "page": 2, "answer": "10 days"},
+    {"q": "When is a medical certificate required for sick leave?", "doc": "leave", "page": 2, "answer": "3 consecutive days"},
+    {"q": "How long is paternity leave?", "doc": "leave", "page": 3, "answer": "15 working days"},
+    {"q": "What is the minimum password length?", "doc": "security", "page": 1, "answer": "14 characters"},
+    {"q": "How quickly must a lost laptop be reported?", "doc": "security", "page": 2, "answer": "24 hours"},
+    {"q": "Is multi-factor authentication required for VPN?", "doc": "security", "page": 3, "answer": "mandatory"},
+    {"q": "When can business class flights be approved?", "doc": "travel", "page": 1, "answer": "longer than 6 hours"},
+    {"q": "What is the daily meal allowance for domestic travel?", "doc": "travel", "page": 2, "answer": "1500 rupees"},
+    {"q": "Within how many days must expense claims be submitted?", "doc": "travel", "page": 3, "answer": "30 days"},
+    {"q": "Who is covered by group health insurance?", "doc": "benefits", "page": 1, "answer": "spouse"},
+    {"q": "What percentage does the company match for provident fund?", "doc": "benefits", "page": 2, "answer": "12 percent"},
+    {"q": "How large is the yearly learning budget?", "doc": "benefits", "page": 3, "answer": "40000 rupees"},
+    {"q": "How do I paraphrase: what is the yearly allowance for training and certification?", "doc": "benefits", "page": 3, "answer": "40000 rupees", "tag": "paraphrase"},
+    {"q": "Which hotel booking channel must be used?", "doc": "travel", "page": 2, "answer": "corporate travel portal"}
+  ],
+  "negatives": [
+    {"q": "What is the stock option vesting schedule?"},
+    {"q": "Which cafeteria vendor serves lunch on Fridays?"},
+    {"q": "What is the parking fee at the Pune campus?"},
+    {"q": "Who is the chief executive officer?"}
+  ]
+}

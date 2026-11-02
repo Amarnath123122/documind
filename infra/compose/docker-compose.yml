@@ -1,0 +1,107 @@
+name: documind
+
+x-core-env: &core-env
+  ENV: local
+  AUTH_MODE: dev
+  DATABASE_URL: postgresql+asyncpg://documind_app:${DOCUMIND_APP_PASSWORD}@db:5432/documind
+  WORKER_DATABASE_URL: postgresql+asyncpg://documind_worker:${DOCUMIND_WORKER_PASSWORD}@db:5432/documind
+  MIGRATION_DATABASE_URL: postgresql+asyncpg://documind_owner:${DOCUMIND_OWNER_PASSWORD}@db:5432/documind
+  SEED_DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/documind
+  SESSION_SECRET: ${SESSION_SECRET:?}
+  # Azurite's documented, public development key (not a secret).
+  BLOB_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+  # Browser reaches Azurite through the web origin's proxy (same-origin upload).
+  BLOB_PUBLIC_BASE: /devstoreaccount1
+  # Empty = tracing off. `dev.ps1 observe` sets it to the Jaeger OTLP endpoint.
+  OTEL_ENDPOINT: ${OTEL_ENDPOINT:-}
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: documind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DOCUMIND_OWNER_PASSWORD: ${DOCUMIND_OWNER_PASSWORD:?}
+      DOCUMIND_APP_PASSWORD: ${DOCUMIND_APP_PASSWORD:?}
+      DOCUMIND_WORKER_PASSWORD: ${DOCUMIND_WORKER_PASSWORD:?}
+    ports: ["55432:5432"]
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d documind"]
+      interval: 2s
+      retries: 30
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:3.33.0
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --location /data --skipApiVersionCheck
+    ports: ["10000:10000"]
+    volumes: ["blob-data:/data"]
+
+  # One-shot: schema migrations as owner, storage containers, synthetic dev seed.
+  migrate:
+    build: ../../services/core-api
+    command: sh -c "alembic upgrade head && python -m documind.dev_seed"
+    environment: *core-env
+    depends_on:
+      db: { condition: service_healthy }
+      azurite: { condition: service_started }
+
+  api:
+    build: ../../services/core-api
+    environment: *core-env
+    ports: ["8000:8000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    build: ../../services/core-api
+    command: python -m documind.ingestion.worker
+    environment: *core-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    environment:
+      API_PROXY_TARGET: http://api:8000
+      BLOB_PROXY_TARGET: http://azurite:10000
+    volumes:
+      - ../../apps/web:/app
+      - web-node-modules:/app/node_modules
+    ports: ["5173:5173"]
+    depends_on: [api]
+
+  # Local OpenID Connect provider for testing the real login flow (ADR-0009).
+  # Issuers: /documind -> alice (provisioned), /documind-unprovisioned -> unknown user.
+  oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    ports: ["8080:8080"]
+    environment:
+      JSON_CONFIG: >-
+        {"interactiveLogin": false, "tokenCallbacks": [
+          {"issuerId": "documind", "tokenExpiry": 300, "requestMappings": [
+            {"requestParam": "grant_type", "match": "*", "claims": {
+              "sub": "alice-oidc-subject", "email": "alice@alpha.test",
+              "email_verified": true, "aud": ["documind-web"]}}]},
+          {"issuerId": "documind-unprovisioned", "tokenExpiry": 300, "requestMappings": [
+            {"requestParam": "grant_type", "match": "*", "claims": {
+              "sub": "ghost-subject", "email": "ghost@nowhere.test",
+              "email_verified": true, "aud": ["documind-web"]}}]}]}
+
+  # Optional: traces UI at http://localhost:16686 (profile "observability").
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    profiles: [observability]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports: ["16686:16686"]
+
+volumes:
+  db-data:
+  blob-data:
+  web-node-modules:

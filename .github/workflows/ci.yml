@@ -1,0 +1,50 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start stack (db + migrate + seed + azurite)
+        run: |
+          cp .env.example .env
+          # No worker container: integration tests drive the queue themselves.
+          docker compose --env-file .env -f infra/compose/docker-compose.yml up -d --build --wait db azurite oidc api
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - working-directory: services/core-api
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]" pip-audit
+          ruff check src tests alembic
+          pip-audit --skip-editable
+          pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - working-directory: apps/web
+        run: npm install --no-fund && npm audit --omit=dev && npm run build
+
+  web-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production web image (nginx + CSP)
+        run: docker build -t documind-web:ci apps/web
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: "1.9.8" }
+      - working-directory: infra/terraform
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate
