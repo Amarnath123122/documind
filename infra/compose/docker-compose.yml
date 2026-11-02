@@ -14,6 +14,11 @@ x-core-env: &core-env
   BLOB_PUBLIC_BASE: /devstoreaccount1
   # Empty = tracing off. `dev.ps1 observe` sets it to the Jaeger OTLP endpoint.
   OTEL_ENDPOINT: ${OTEL_ENDPOINT:-}
+  # mock/hash by default (deterministic). `dev.ps1 up-ai` switches to real Ollama models.
+  LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+  EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-hash}
+  OLLAMA_URL: http://ollama:11434
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
 
 services:
   db:

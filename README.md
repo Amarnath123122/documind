@@ -61,3 +61,7 @@ Requirements: Docker Desktop, Python 3.12+. The web app runs on Node 22 inside D
 - Citations the server didn't issue are dropped (`test_hallucinated_citation_never_reaches_client`).
 - Revoking a grant hides the document on the very next request (`test_restricted_document_hidden_everywhere_until_granted`).
 - A document in `deleting` is never moved back to `ready` (`test_deleting_document_is_never_revived`).
+
+## Architecture
+
+Full architecture with diagrams and evidence for every claim: [docs/architecture/README.md](docs/architecture/README.md).

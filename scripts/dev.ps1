@@ -1,5 +1,6 @@
 # DocuMind local commands (Windows PowerShell). Usage: .\scripts\dev.ps1 <command>
 #   up       build + start db, migrate+seed, api, web
+#   up-ai    same as up, but chat/search use real local models (Ollama)
 #   test     unit + security tests (needs `up`)
 #   down     stop containers (keeps data)
 #   reset    stop and DELETE local db volume
@@ -48,8 +49,15 @@ switch ($Cmd) {
               finally { Remove-Item Env:OLLAMA_URL, Env:EMBEDDING_PROVIDER, Env:LLM_PROVIDER,
                                     Env:OLLAMA_MODEL, Env:EVAL_REPORT
                         Pop-Location; docker @Compose start worker } }
+    # Run the app on real local models (slower answers, real understanding).
+    "up-ai" { $env:LLM_PROVIDER = "ollama"; $env:EMBEDDING_PROVIDER = "ollama"
+              docker @Compose --profile ai up -d --build --wait db azurite oidc ollama api worker web
+              docker @Compose exec -T ollama ollama pull nomic-embed-text
+              docker @Compose exec -T ollama ollama pull qwen2.5:1.5b
+              docker @Compose exec -T worker python -m documind.ingestion.reembed
+              "Web (real models): http://localhost:5173" }
     "down"  { docker @Compose down }
     "reset" { docker @Compose --profile observability down -v }
     "logs"  { docker @Compose logs -f api }
-    default { Get-Content $PSCommandPath -TotalCount 10 }
+    default { Get-Content $PSCommandPath -TotalCount 11 }
 }
