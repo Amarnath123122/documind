@@ -21,6 +21,8 @@ flowchart TB
     PG -. "jobs: FOR UPDATE SKIP LOCKED + lease" .-> Worker
 ```
 
+UML diagrams (use case, component, class, ER, state, sequence, deployment): [uml.md](uml.md).
+
 Each module is layered `api → service (use cases) → domain (pure rules)`. Domain code may not import FastAPI, SQLAlchemy, Pydantic or Azure SDKs.
 
 | Decision | Why | Evidence |
